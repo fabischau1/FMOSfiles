@@ -1,45 +1,281 @@
 <!DOCTYPE html>
-<html class="no-js" lang="sv-SE" prefix="og: http://ogp.me/ns#">
-   <!--<![endif]-->
-   <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-      <meta http-equiv="X-UA-Compatible" content="IE=edge">
-      <meta name="google" content="notranslate">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-      <link href="assets/css/style.css" rel="stylesheet">
-   </head>
-   <body>
-      <div class="page-content">
-         <main role="main" class="u-main">
-         </main>
-      </div>
-      <div id="hide"><textarea class="js-copytextarea">url_to_copy</textarea></div>
-      <div id="version"></div>
-      <div id="hotbar"></div>
-      <div id="previewWindow"></div>
-      <div id="chat"></div>
-      <div id="menu"></div>
-      <div id="progress"></div>
-      <div id="overlay"></div>
-      <div id="mobile">
-         <div id="text_vertical">
-            <p></p>
-            <h2>Sorry!</h2>
-            <p></p>
-            <p>This version of Minecraft<br>requires a keyboard.</p>
-            <p>Please try again on another device.</p>
-         </div>
-      </div>
-      <div id="webgl_webrtc">
-         <div id="text_vertical">
-            <p></p>
-            <h2>Sorry!</h2>
-            <p></p>
-            <p>It seems like your browser doesn’t support<br>WebGL or WebRTC that is required to run this game.</p>
-            <p></p>
-            <p>Find a new one at <a href="https://browsehappy.com/" target="_blank">https://browsehappy.com</a></p>
-         </div>
-      </div>
-      <script src="assets/js/app.js"></script>
-   </body>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeinOS</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+       .desktop {
+            background-color: #008080;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+       .taskbar {
+            background-color: #333;
+            color: white;
+            height: 40px;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
+       .taskbar button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+       .window {
+            background-color: white;
+            border: 1px solid #000;
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            width: 300px;
+            height: 200px;
+            display: none;
+            flex-direction: column;
+            z-index: 10;
+        }
+       .window-header {
+            background-color: #0078d7;
+            color: white;
+            padding: 5px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+       .window-body {
+            flex: 1;
+            padding: 10px;
+        }
+       .window-footer {
+            padding: 5px;
+            text-align: right;
+        }
+       .icon {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            text-align: center;
+            padding-top: 30px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 12px;
+            border: 1px solid #000;
+        }
+       .context-menu {
+            position: absolute;
+            background-color: white;
+            border: 1px solid #000;
+            display: none;
+            z-index: 100;
+        }
+       .context-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+       .context-menu ul li {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+       .context-menu ul li:hover {
+            background-color: #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="desktop" id="desktop" oncontextmenu="showContextMenu(event); return false;">
+    </div>
+    <div class="taskbar">
+        <button onclick="createFile()">Neue Datei</button>
+    </div>
+    <div class="window" id="editorWindow">
+        <div class="window-header">
+            <span id="editorTitle">Editor</span>
+            <button onclick="closeWindow()" style="background:none; border:none; color:white;">X</button>
+        </div>
+        <div class="window-body">
+            <textarea id="fileContent" style="width: 100%; height: 100%;"></textarea>
+        </div>
+        <div class="window-footer">
+            <button onclick="saveFile()">Speichern</button>
+            <button onclick="deleteFile()">Löschen</button>
+            <button onclick="executeJS()">Ausführen</button>
+        </div>
+    </div>
+    <div class="context-menu" id="contextMenu">
+        <ul>
+            <li onclick="renameFile()">Umbenennen</li>
+            <li onclick="deleteFile()">Löschen</li>
+        </ul>
+    </div>
+
+    <script>
+        let files = {};
+        let selectedFile = null;
+
+        // Load files from localStorage
+        if (localStorage.getItem('files')) {
+            files = JSON.parse(localStorage.getItem('files'));
+        }
+
+        function createFile() {
+            const fileName = prompt("Dateiname:");
+            if (fileName) {
+                if (!files[fileName]) {
+                    files[fileName] = "";
+                    renderFiles();
+                    saveFilesToStorage();
+                } else {
+                    alert("Datei existiert bereits.");
+                }
+            }
+        }
+
+        function renderFiles() {
+            const desktop = document.getElementById('desktop');
+            desktop.innerHTML = '';
+            for (const fileName in files) {
+                const fileIcon = document.createElement('div');
+                fileIcon.className = 'icon';
+                fileIcon.innerHTML = fileName;
+                fileIcon.onclick = () => openFile(fileName);
+                fileIcon.oncontextmenu = (e) => {
+                    selectedFile = fileName;
+                    showContextMenu(e);
+                    return false;
+                };
+                desktop.appendChild(fileIcon);
+            }
+        }
+
+        function openFile(fileName) {
+            selectedFile = fileName;
+            document.getElementById('editorTitle').innerText = `Editor - ${fileName}`;
+            document.getElementById('fileContent').value = files[fileName];
+            openWindow();
+        }
+
+        function saveFile() {
+            if (selectedFile) {
+                files[selectedFile] = document.getElementById('fileContent').value;
+                saveFilesToStorage();
+                alert('Datei gespeichert.');
+            }
+        }
+
+        function deleteFile() {
+            if (selectedFile) {
+                const confirmDelete = confirm('Möchten Sie die Datei wirklich löschen?');
+                if (confirmDelete) {
+                    delete files[selectedFile];
+                    closeWindow();
+                    renderFiles();
+                    saveFilesToStorage();
+                    selectedFile = null;
+                }
+            }
+        }
+
+        function renameFile() {
+            if (selectedFile) {
+                const newFileName = prompt("Neuer Dateiname:", selectedFile);
+                if (newFileName && !files[newFileName]) {
+                    files[newFileName] = files[selectedFile];
+                    delete files[selectedFile];
+                    selectedFile = newFileName;
+                    renderFiles();
+                    saveFilesToStorage();
+                } else {
+                    alert("Ungültiger Name oder Datei existiert bereits.");
+                }
+            }
+        }
+
+        function openWindow() {
+            document.getElementById('editorWindow').style.display = 'flex';
+        }
+
+        function closeWindow() {
+            document.getElementById('editorWindow').style.display = 'none';
+        }
+
+        function showContextMenu(event) {
+            const contextMenu = document.getElementById('contextMenu');
+            contextMenu.style.top = `${event.clientY}px`;
+            contextMenu.style.left = `${event.clientX}px`;
+            contextMenu.style.display = 'block';
+            document.addEventListener('click', hideContextMenu);
+        }
+
+        function hideContextMenu() {
+            document.getElementById('contextMenu').style.display = 'none';
+            document.removeEventListener('click', hideContextMenu);
+        }
+
+        function executeJS() {
+            if (selectedFile && selectedFile.endsWith('.js')) {
+                try {
+                    eval(files[selectedFile]);
+                } catch (error) {
+                    alert('Fehler beim Ausführen des Codes: ' + error.message);
+                }
+            } else {
+                alert('Dies ist keine JavaScript-Datei.');
+            }
+        }
+
+        // Drag functionality for the window
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        document.querySelector('.window-header').addEventListener('mousedown', (e) => {
+            isDragging = true;
+            offsetX = e.clientX - document.getElementById('editorWindow').offsetLeft;
+            offsetY = e.clientY - document.getElementById('editorWindow').offsetTop;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const x = e.clientX - offsetX;
+                const y = e.clientY - offsetY;
+                document.getElementById('editorWindow').style.left = `${x}px`;
+                document.getElementById('editorWindow').style.top = `${y}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Save files to localStorage
+        function saveFilesToStorage() {
+            localStorage.setItem('files', JSON.stringify(files));
+        }
+
+        // Load files from localStorage on page load
+        window.onload = () => {
+            if (localStorage.getItem('files')) {
+                files = JSON.parse(localStorage.getItem('files'));
+                renderFiles();
+            }
+        };
+    </script>
+</body>
 </html>
