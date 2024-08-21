@@ -481,20 +481,41 @@ function uploadFile() {
                 }
             });
         }
+		
+function askForPassword() {
+    const enteredPassword = prompt("Password:");
+    const storedPassword = localStorage.getItem('password');
 
+    if (!storedPassword) {
+        // No password stored, proceed with the actions for an empty password scenario
+        handleNoPassword();
+    } else if (enteredPassword === storedPassword) {
+        // Password matches, proceed with file handling
+        if (localStorage.getItem('files')) {
+            const files = JSON.parse(localStorage.getItem('files'));
+        }
         renderFiles();
+    } else {
+        // Password incorrect
+        alert("Password incorrect");
+        setTimeout(askForPassword, 3000);
+    }
+}
+
+function handleNoPassword() {
+    // Define what should happen when no password is stored
+    if (localStorage.getItem('files')) {
+        const files = JSON.parse(localStorage.getItem('files'));
+    }
+	renderFiles();
+}
+
+
+askForPassword();
 		
 	// Save files to localStorage
         function saveFilesToStorage() {
             localStorage.setItem('files', JSON.stringify(files));
         }
-
-        // Load files from localStorage on page load
-        window.onload = () => {
-            if (localStorage.getItem('files')) {
-                files = JSON.parse(localStorage.getItem('files'));
-                renderFiles();
-            }
-        };
     </script>
 </body>
